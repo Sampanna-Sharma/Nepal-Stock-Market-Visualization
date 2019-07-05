@@ -78,7 +78,20 @@ def candle_plot(traded_companies):
     hover.formatters={"@time":'datetime',}
     hover.mode = "vline"
 
-    callback = CustomJS(args=dict(source=source), code="""
+
+
+
+
+    #second plot    
+    p4 = figure(x_axis_type="datetime",active_scroll = 'xwheel_zoom',title = "Bollinger Band",plot_width=1200, plot_height=500, tools=TOOLS+ ',crosshair')
+    p4.line(x='time', y='ma20', color=RED, alpha = 0.6,source=source, legend = "Moving Average :- 20")
+    p4.line(x='time', y='close', color='black', line_width = 2,source=source, legend = "closing_price")
+
+    band = Band(base='time', lower='bband_l', upper='bband_u', source=source, level='underlay',
+                    fill_alpha=0.5, line_width=1, line_color='black', fill_color=BLUE_LIGHT)
+    p4.add_layout(band)
+
+    callback = CustomJS(args=dict(source=source,p=p,p4=p4), code="""
         var company_name = cb_obj.value
         var data = source.data;
         let xhr  = new XMLHttpRequest();
@@ -104,26 +117,15 @@ def candle_plot(traded_companies):
         data['std20'] = response.std20
         data['bband_u'] = response.bband_u
         data['bband_l'] = response.bband_l
-        source.change.emit();}
+        source.change.emit()
+        p.reset.emit()
+        p4.reset.emit();}
         """)
-
-
     #Selection
     option = ["Nabil Bank Limited", "Bank of Asia Nepal Limited", "Arun Valley Hydropower Development Co. Ltd.",
                 "Citizen Bank International Limited", "Bank of Kathmandu Ltd.", "Nepal Bangladesh Bank Limited"]
     Company_select = Select(value="Nabil Bank Limited", options=option)
     Company_select.js_on_change('value', callback)
-
-
-    #second plot    
-    p4 = figure(x_axis_type="datetime",active_scroll = 'xwheel_zoom',title = "Bollinger Band",plot_width=1200, plot_height=500, tools=TOOLS+ ',crosshair')
-    p4.line(x='time', y='ma20', color=RED, alpha = 0.6,source=source, legend = "Moving Average :- 20")
-    p4.line(x='time', y='close', color='black', line_width = 2,source=source, legend = "closing_price")
-
-    band = Band(base='time', lower='bband_l', upper='bband_u', source=source, level='underlay',
-                    fill_alpha=0.5, line_width=1, line_color='black', fill_color=BLUE_LIGHT)
-    p4.add_layout(band)
-
     tab1 = Panel(child=p, title="candle stick")
     tab2 = Panel(child=p4, title="bollinder")
 
