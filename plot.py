@@ -17,41 +17,15 @@ BROWN = Category20[11][10]
 
 
 TOOLS = "pan,xwheel_zoom,reset,hover"
-data = pd.read_csv("stockprice_15_04_2019-25_10_2017.csv")
+data = pd.read_csv("processed_data.csv")
 company_data = data.loc[data['traded_companies'] == 'Nabil Bank Limited']
-company_data["date"] = pd.to_datetime(company_data['date'], cache = True)
-company_date = np.array(company_data["date"],dtype = np.datetime64).tolist()
-c = []
-for op,cl in zip(company_data["previous_closing"], company_data["closing_price"]):
-    if cl > op:
-        c.append(GREEN)
-    elif cl< op:
-        c.append(RED)
-    else:
-        c.append(BLUE)
-
-
-nabil_data = dict(  time = company_date,
-                    open = company_data["previous_closing"].to_list(),
-                    close = company_data["closing_price"].to_list(),
-                    high = company_data["max_price"].to_list(),
-                    low = company_data["min_price"].to_list(),
-                    color = c,
-                    no_trans = company_data["no_of_transaction"].to_list(),
-                    ma20 = company_data['closing_price'].rolling(20).mean().to_list(),
-                    ma50 = company_data['closing_price'].rolling(50).mean().to_list(),
-                    std20 = company_data['closing_price'].rolling(20).std().to_list(),
-                    mad = (company_data['closing_price'].rolling(20).mean() - company_data['closing_price'].rolling(50).mean().fillna(0)).to_list(),
-                    bband_u = (company_data['closing_price'].rolling(20).mean() + 2 * company_data['closing_price'].rolling(20).std().fillna(0)).to_list(),
-                    bband_l = (company_data['closing_price'].rolling(20).mean() - 2 * company_data['closing_price'].rolling(20).std().fillna(0)).to_list(),
-                    )
 
 
 
 
 def candle_plot(traded_companies):
 
-    source = ColumnDataSource(nabil_data)
+    source = ColumnDataSource(company_data)
 
     p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1200, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above")
@@ -66,6 +40,9 @@ def candle_plot(traded_companies):
     p.segment(x0='time', y0='low', x1='time', y1='high', line_width=1, color='black', source=source)
     p.segment(x0='time', y0='open', x1='time', y1='close', line_width=6, color='color', source=source)
     p.line(x='time', y='close', alpha = 0.5, color = ORANGE, source = source)
+
+    p.x_range.follow = "end"
+    #p.x_range.follow_interval = 10
 
     hover = p.select(dict(type=HoverTool))
     hover.tooltips = [
