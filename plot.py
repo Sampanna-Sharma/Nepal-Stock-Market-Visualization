@@ -1,5 +1,7 @@
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, CustomJS, Select, HoverTool, DatetimeTickFormatter, Band,Panel, Tabs
+from datetime import date, timedelta
+from bokeh.models import ColumnDataSource, CustomJS, Select, HoverTool, DatetimeTickFormatter,\
+                         Band,Panel, Tabs, SingleIntervalTicker, PrintfTickFormatter, Range1d, LinearAxis
 from bokeh.layouts import row, column
 import pandas as pd
 import numpy as np
@@ -16,7 +18,7 @@ PURPLE = Category20[9][8]
 BROWN = Category20[11][10]
 
 
-TOOLS = "pan,xwheel_zoom,reset,hover"
+TOOLS = "xpan,xwheel_zoom,reset,hover"
 data = pd.read_csv("processed_data.csv")
 company_data = data.loc[data['traded_companies'] == 'Nabil Bank Limited']
 
@@ -26,6 +28,7 @@ company_data = data.loc[data['traded_companies'] == 'Nabil Bank Limited']
 def candle_plot(traded_companies):
 
     source = ColumnDataSource(company_data)
+
 
     p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1200, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above")
@@ -40,10 +43,20 @@ def candle_plot(traded_companies):
     p.segment(x0='time', y0='low', x1='time', y1='high', line_width=1, color='black', source=source)
     p.segment(x0='time', y0='open', x1='time', y1='close', line_width=6, color='color', source=source)
     p.line(x='time', y='close', alpha = 0.5, color = ORANGE, source = source)
+    #transaction graph
+    p.extra_y_ranges["trans"] = Range1d(start=0, end=5000)
+    p.segment(x0='time', y0=0, x1='time', y1='no_trans',y_range_name="trans", line_width=6, color='black', alpha=0.5, source=source, legend = "No. of transactions")
+    
+    p.x_range.start=source.data["time"][-50]
+    p.x_range.end= source.data["time"][-1]
+    p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
+    p.x_range.min_interval = timedelta(1)
 
-    p.x_range.follow = "end"
-    #p.x_range.follow_interval = 10
+    
+    
 
+    #p.extra_y_ranges["trans"].bounds = "auto"
+    p.add_layout(LinearAxis(y_range_name='trans', bounds = (0,1500),axis_label = "No of transaction"), 'right')
     hover = p.select(dict(type=HoverTool))
     hover.tooltips = [
         ("Date", "@time{%F}"),
@@ -55,8 +68,10 @@ def candle_plot(traded_companies):
     hover.formatters={"@time":'datetime',}
     hover.mode = "vline"
 
-
-
+   
+    #p.yaxis.ticker = SingleIntervalTicker(interval=100, num_minor_ticks=5)
+    p.yaxis[0].formatter = PrintfTickFormatter(format="Rs. %3.3f")
+    #p.yaxis[0].ticker.desired_num_ticks = 10
 
 
     #second plot    
@@ -82,24 +97,18 @@ def candle_plot(traded_companies):
             response = JSON.parse(response);
             console.log(response)
             
-        data['color'] = response.color
-        data['open'] = response.open
-        data['close'] = response.close
-        data['high'] = response.high
-        data['low'] = response.low
-        data['time'] = response.time
-        data['ma20'] = response.ma20
-        data['ma50'] = response.ma50
-        data['mad'] = response.mad
-        data['std20'] = response.std20
-        data['bband_u'] = response.bband_u
-        data['bband_l'] = response.bband_l
+        for (key in response) {
+            data[key] = response[key];
+            }
+        
+        
+
         source.change.emit()
         p.reset.emit()
         p4.reset.emit();}
         """)
     #Selection
-    option = ["Nabil Bank Limited", "Bank of Asia Nepal Limited", "Arun Valley Hydropower Development Co. Ltd.",
+    option = ["Nabil Bank Limited", "Arun Valley Hydropower Development Co. Ltd.",
                 "Citizen Bank International Limited", "Bank of Kathmandu Ltd.", "Nepal Bangladesh Bank Limited"]
     Company_select = Select(value="Nabil Bank Limited", options=option)
     Company_select.js_on_change('value', callback)
