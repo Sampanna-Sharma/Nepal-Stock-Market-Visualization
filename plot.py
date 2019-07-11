@@ -1,12 +1,18 @@
 from bokeh.plotting import figure
 from datetime import date, timedelta
 from bokeh.models import ColumnDataSource, CustomJS, Select, HoverTool, DatetimeTickFormatter,\
-                         Band,Panel, Tabs, SingleIntervalTicker, PrintfTickFormatter, Range1d, LinearAxis
+                         Band,Panel, Tabs, SingleIntervalTicker, PrintfTickFormatter, Range1d, LinearAxis \
+                        ,CrosshairTool, Span, TapTool, Dropdown
+from bokeh.models.widgets import CheckboxButtonGroup
+
 from bokeh.layouts import row, column
-from bokeh.models.widgets import CheckboxGroup, Dropdown
+from bokeh.themes import built_in_themes
+from bokeh.io import curdoc
+
 import pandas as pd
 import numpy as np
 from bokeh.palettes import Category20
+from bokeh.events import DoubleTap
 #palletes
 RED = Category20[7][6]
 GREEN = Category20[5][4]
@@ -17,244 +23,222 @@ BLUE_LIGHT = Category20[3][1]
 ORANGE = Category20[3][2]
 PURPLE = Category20[9][8]
 BROWN = Category20[11][10]
-
+time_frame = "/week"
 
 TOOLS = "xpan,xwheel_zoom,reset,hover"
 data = pd.read_csv("processed_data.csv")
 company_data = data.loc[data['traded_companies'] == 'Nabil Bank Limited']
-
-dates = pd.to_datetime(company_data['time'].astype(int), unit = 'ms')
-company_data['time'] = dates
-
-
-company_data_year = company_data.groupby(company_data['time'].dt.to_period('M'))['high'].agg(['max'])
-company_data_year['min'] = company_data.groupby(company_data['time'].dt.to_period('M'))['low'].agg(['min'])
-company_data_year['no_of_trans'] = company_data.groupby(company_data['time'].dt.to_period('M'))['no_trans'].agg(['sum'])
-company_data_year['open'] = company_data.groupby(company_data['time'].dt.to_period('M'))['open'].agg(['first'])
-company_data_year['close'] = company_data.groupby(company_data['time'].dt.to_period('M'))['close'].agg(['last'])
-company_data_year.loc[company_data_year.close > company_data_year.open, 'color'] = 'green'
-company_data_year.loc[company_data_year.close <= company_data_year.open, 'color'] = 'red'
+company_data['time2'] = company_data['time'] 
+source = ColumnDataSource(company_data)
 
 
-def candle_plot(traded_companies):
+def plot():
+    #curdoc().theme = 'dark_minimal'
 
-    # source = ColumnDataSource(company_data)
-    source = ColumnDataSource(company_data_year)
 
-    print('************************************************************')
-    # print(source)
-    select_plots_checkbox = CheckboxGroup(labels = ['Candle Stick', 'Bollinder Band'], active = [0])
-    # print(select_plots_checkbox)
-    # print(select_plots_checkbox.active)
-    print(source)
+    candle = candle_plot()
 
-    print('************************************************************')
+    #bullinder band
+    bullinder = bullinder_band()
+    candle.add_layout(bullinder)
 
+    #transaction plot
+    transac_plot = transaction_plot()
+    transac_plot.x_range = candle.x_range
+
+    #moving average plot
+    MA_plot = movingavg_plot()
+    MA_plot.x_range = candle.x_range
+
+    #Support line
+    support = Span(location=500,
+                              dimension='width', line_color='green',
+                              line_dash='dashed', line_width=3)
+    support.visible = False
+    candle.add_layout(support)
+
+    add_vlinked_crosshairs(candle, transac_plot)
+    add_vlinked_crosshairs(candle, MA_plot)
+
+    option = ["Nabil Bank Limited", "Arun Valley Hydropower Development Co. Ltd.",
+                "Citizen Bank International Limited", "Bank of Kathmandu Ltd.", "Nepal Bangladesh Bank Limited"]
+    menu = [("day","day"),("week","week"),("month", "month"),("quater", "quater"),("year", "year")]
+    timeframe_dropdown = Dropdown(value = 'day', label="Select time Scale", menu=menu)
+
+   
+    Company_select = Select(value="Nabil Bank Limited", options=option)
+
+    #Tap callback
+    callback_tap = CustomJS(args=dict(supp=support), code="""
+        supp.visible = true
+        console.log(cb_obj)
+        var geometry = cb_data['geometry'];
+        var a = geometry.x; // current mouse x position in plot coordinates
+        var b = geometry.y;
+        supp.location = a
+    """)
+
+
+    #Radio_option
+    callback_radio = CustomJS(args=dict(p=bullinder), code="""
+        if (cb_obj.active[0] == 0){
+            p.visible = true}
+        else{ p.visible = false}
+    """)
+     #Selection
+    callback_select = CustomJS(args=dict(source=source,p=candle,company_select=Company_select, 
+                                timeframe_dropdown=timeframe_dropdown, time_frame =time_frame), 
+    code="""
+    time_frame = "/" + timeframe_dropdown.value
+    var company_name = company_select.value
+    var timeframe_list = ['year','month', 'week', 'day']
+    if (timeframe_list.includes(cb_obj.value)){
+        time_frame = "/" + cb_obj.value
+    }
+    
+    console.log('Company name: ' , company_name)
+    var data = source.data;
+    let xhr  = new XMLHttpRequest();
+    var url = `http://localhost:5000/data${time_frame}?company=`+company_name.replace(/ /g,"%20")
+    xhr.open('GET',url);
+    xhr.send();
+    response = []
+    console.log(url)
+    xhr.onload = function(){
+        var response = xhr.response;
+        response = JSON.parse(response);
+        console.log(response)
+        
+    for (key in response) {
+        data[key] = response[key];
+        }
+    
+    source.change.emit()
+    p.reset.emit()}
+    """)
+
+
+    tab_trans = Panel(child=transac_plot, title="Transactions")
+    tab_MA = Panel(child=MA_plot, title="Moving Average")
+
+    tabs = Tabs(tabs=[tab_trans, tab_MA])
+    tabs.tabs_location = "above"
+    
+
+    #checkbox
+    checkbox_button_group = CheckboxButtonGroup(
+        labels=["Bullinder Band", "Movitab1ng Avg 20"])
+    checkbox_button_group.js_on_click(callback_radio)
+
+    #adding callbacks
+    Company_select.js_on_change('value', callback_select)
+    timeframe_dropdown.js_on_change('value', callback_select)
+
+    #Ontap callback
+    candle.js_on_event(DoubleTap, callback_tap)
+    #tapped = TapTool(callback = callback_tap)
+    #candle.add_tools(tapped)
+    
+    #final layout
+    layout = column(Company_select,row(checkbox_button_group,timeframe_dropdown),candle,tabs)
+    
+    
+    return layout
+
+def bullinder_band():
+    band = Band(base='time', lower='bband_l', upper='bband_u', source=source, level='underlay',
+                    fill_alpha=0.5, line_width=1, line_color='black', fill_color=BLUE_LIGHT)
+    band.visible = False
+    
+    return band
+
+def candle_plot():
 
     p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1200, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above")
 
-    # p.xaxis.formatter = DatetimeTickFormatter(
-    #                             days=["%F"],
-    #                             months=["%F"],
-    #                             years=["%F"],)
+    p.xaxis.formatter = DatetimeTickFormatter(
+                                days=["%F"],
+                                months=["%F"],
+                                years=["%F"],)
     p.xaxis.axis_label = "date"
     p.yaxis.axis_label = "price"
 
-    # p.segment(x0='time', y0='low', x1='time', y1='high', line_width=1, color='black', source=source)
-    p.segment(x0='time', y0='min', x1='time', y1='max', line_width=1, color='black', source=source)
-    p.segment(x0='time', y0='open', x1='time', y1='close', line_width=6, color='color', source=source)  #set color = 'color'
-    p.line(x='time', y='close', alpha = 0.5, color = ORANGE, source = source)
+    p.segment(x0='time2', y0='low', x1='time2', y1='high', line_width=1, color='black', source=source)
+    p.segment(x0='time2', y0='open', x1='time2', y1='close', line_width=6, color='color', source=source)
+    p.line(x='time2', y='close', alpha = 0.5, color = ORANGE, source = source)
+   
+    #p.x_range.start=source.data["time"][-50]
+    #p.x_range.end= source.data["time"][-1]
+    #p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
+    #p.x_range.min_interval = timedelta(1)
+    p.x_range.follow = 'end'
 
-    #transaction graph
-    p.extra_y_ranges["trans"] = Range1d(start=0, end=5000)
-    # p.segment(x0='time', y0=0, x1='time', y1='no_trans',y_range_name="trans", line_width=6, color='black', alpha=0.5, source=source, legend = "No. of transactions")
-    # p.segment(x0='time', y0=0, x1='time', y1='no_of_trans',y_range_name="trans", line_width=6, color='black', alpha=0.5, source=source, legend = "No. of transactions")
-
-
-
-    # p.x_range.start=source.data["time"][-50]
-    # p.x_range.end= source.data["time"][-1]
-    p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
-    p.x_range.min_interval = timedelta(1)
-
-    
-    
-
-    #p.extra_y_ranges["trans"].bounds = "auto"
-    p.add_layout(LinearAxis(y_range_name='trans', bounds = (0,1500),axis_label = "No of transaction"), 'right')
     hover = p.select(dict(type=HoverTool))
     hover.tooltips = [
         ("Date", "@time{%F}"),
         ("Open", "@open"),
         ("Close", "@close"),
-        ("High", "@max"),
-        ("Low", "@min"),
+        ("High", "@high"),
+        ("Low", "@low"),
         ]
     hover.formatters={"@time":'datetime',}
     hover.mode = "vline"
-
    
     #p.yaxis.ticker = SingleIntervalTicker(interval=100, num_minor_ticks=5)
     p.yaxis[0].formatter = PrintfTickFormatter(format="Rs. %3.3f")
     #p.yaxis[0].ticker.desired_num_ticks = 10
 
+    return p
 
-    #second plot 
-    # commented below this    
-    p4 = figure(x_axis_type="datetime",active_scroll = 'xwheel_zoom',title = "Bollinger Band",plot_width=1200, plot_height=500, tools=TOOLS + ', crosshair')
-    # p4.line(x='time', y='ma20', color=RED, alpha = 0.6,source=source, legend = "Moving Average :- 20")
-    p4.line(x='time', y='close', color='black', line_width = 2,source=source, legend = "closing_price")
+def transaction_plot():
+    #transaction graph
+    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1200, tools=TOOLS)
+    p.xaxis.axis_label = "date"
+    p.yaxis.axis_label = "No of Transactions"
+    p.title_location = "below"
 
-    # band = Band(base='time', lower='bband_l', upper='bband_u', source=source, level='underlay',
-                    # fill_alpha=0.5, line_width=1, line_color='black', fill_color=BLUE_LIGHT)
-    # p4.add_layout(band)
+    p.segment(x0='time2', y0=0, x1='time2', y1='no_trans', line_width=6, color="black", alpha=0.5, source=source)
+    p.toolbar.logo = None
+    p.toolbar_location = None
+    p.min_border_left = 95
+    hover = p.select(dict(type=HoverTool))
+    hover.tooltips = [
+        ("Transaction", "@no_trans"),
+        ]
+    return p
 
-    #commented above this
-
-
-
-    #-----------------------------------------------------------------------------------------------------
-    # def update_plots(attr, old, new):
-    #     if 1 in select_plots_checkbox.active:
-    #         p.line(x='time', y='ma20', color=RED, alpha = 0.6,source=source, legend = "Moving Average :- 20")
-    #         p.line(x='time', y='close', color='black', line_width = 2,source=source, legend = "closing_price")
-    #         p.add_layout(band)
-    # select_plots_checkbox.on_change('active', update_plots)
-
-    #-----------------------------------------------------------------------------------------------------
-
-
-    time_frame = "/week"
-    # def dropdown_function(attr, old, new):
-    #     time_frame = "/" + dropdown.value
-    #     print(time_frame)
-
-    # print("Time frame: ", time_frame)
-     
-    # dropdown_callback = CustomJS(args=dict(time_frame=time_frame), code = """
-    #     console.log('cb_data ', cb_data)
-    #     console.log('cb_obj ', cb_obj.value)
-    #     console.log('Time frame: ', time_frame)
-    # """)
+def movingavg_plot():
+    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1200, tools=TOOLS)
+    p2.xaxis.axis_label = "date"
+    p2.yaxis.axis_label = "Avg_price"
+    p2.line(x='time', y='ma50', color=RED, source=source, legend = "Moving Average :- 50")
+    p2.line(x='time', y='ma20', color=BLUE, source=source, legend = "Moving Average :- 20")
+    p2.toolbar.logo = None
+    p2.toolbar_location = None
+    hover = p2.select(dict(type=HoverTool))
+    hover.tooltips = [
+        ("MA20", "@ma20"),
+        ("MA50", "@ma50"),
+        ]
+    hover.mode = "vline"
+    return p2
 
 
+def add_vlinked_crosshairs(fig1, fig2):
+    js_move = '''if(cb_obj.x >= fig.x_range.start && cb_obj.x <= fig.x_range.end && cb_obj.y >= fig.y_range.start && cb_obj.y <= fig.y_range.end)
+                    { cross.spans.height.computed_location = cb_obj.sx }
+                 else 
+                    { cross.spans.height.computed_location = null }'''
+    js_leave = 'cross.spans.height.computed_location = null'
 
-    # menu = [("year", "year"), ("month", "month")]
-    # dropdown = Dropdown(label="Select time Scale", button_type="warning", menu=menu)
-
-    # dropdown.js_on_change('value', dropdown_callback)
-
-    # print("Time frame: ", time_frame)
-
-    option = ["Nabil Bank Limited", "Arun Valley Hydropower Development Co. Ltd.",
-                "Citizen Bank International Limited", "Bank of Kathmandu Ltd.", "Nepal Bangladesh Bank Limited"]
-    menu = [("year", "year"), ("month", "month"), ("week","week"), ("day","day")]
-
-
-    Company_select = Select(value="Nabil Bank Limited", options=option)
-    timeframe_dropdown = Dropdown(value = 'month', label="Select time Scale", button_type="warning", menu=menu)
-
-
-    callback = CustomJS(args=dict(source=source,p=p,p4=p4,company_select=Company_select, timeframe_dropdown=timeframe_dropdown, time_frame =time_frame), code="""
-        time_frame = "/" + timeframe_dropdown.value
-        var company_name = company_select.value
-        var timeframe_list = ['year','month', 'week', 'day']
-        if (timeframe_list.includes(cb_obj.value)){
-            time_frame = "/" + cb_obj.value
-        }
-        else{
-            company_name = cb_obj.value
-        }
-        console.log('Company name: ' , company_name)
-        var data = source.data;
-        let xhr  = new XMLHttpRequest();
-        var url = `http://localhost:5000/data${time_frame}?company=`+company_name.replace(/ /g,"%20")
-        xhr.open('GET',url);
-        xhr.send();
-        response = []
-        console.log('******************************************')
-        //console.log(time_frame)
-        console.log(url)
-        //console.log('cb obj : ', cb_obj)
-        //console.log('cb_data: ', cb_data)
-        console.log('******************************************')
-        xhr.onload = function(){
-            var response = xhr.response;
-            //console.log(response)
-
-            response = JSON.parse(response);
-            
-        for (key in response) {
-            data[key] = response[key];
-            }
-        
-        console.log('Source: ', response)        
-
-        source.change.emit()
-        p.reset.emit()
-        p4.reset.emit();}
-        """)
-
-
-    #Selection
-    
-    
-
-
-
-
-
-    # callback for dropdown of timeframe(below)
-
-    # dropdown_callback = CustomJS(args=dict(source=source,p=p,p4=p4,company_select=Company_select, time_frame =time_frame), code="""
-    #     console.log('Company Select: ', company_select.value)
-    #     time_frame = "/" + cb_obj.value
-    #     var company_name = company_select.value
-    #     var data = source.data;
-    #     let xhr  = new XMLHttpRequest();
-    #     var url = `http://localhost:5000/data${time_frame}?company=`+company_name.replace(/ /g,"%20")
-    #     xhr.open('GET',url);
-    #     xhr.send();
-    #     response = []
-    #     console.log('******************************************')
-    #     //console.log(time_frame)
-    #     //console.log(url)
-    #     //console.log('cb obj : ', cb_obj.value)
-    #     //console.log('cb_data: ', cb_data)
-    #     console.log('******************************************')
-    #     xhr.onload = function(){
-    #         var response = xhr.response;
-    #         //console.log(response)
-
-    #         response = JSON.parse(response);
-            
-    #     for (key in response) {
-    #         data[key] = response[key];
-    #         }
-        
-    #     console.log('Source: ', source)        
-
-    #     source.change.emit()
-    #     p.reset.emit()
-    #     p4.reset.emit();}
-    #     """)
-
-
-    
-    Company_select.js_on_change('value', callback)
-    timeframe_dropdown.js_on_change('value', callback)
-
-
-
-   
-
-
-    tab1 = Panel(child=p, title="candle stick")
-    tab2 = Panel(child=p4, title="bollinder")
-
-    tabs = Tabs(tabs=[ tab1, tab2 ])
-
-    layout = column(Company_select,tabs,timeframe_dropdown)
-
-    return layout
+    cross1 = CrosshairTool()
+    cross2 = CrosshairTool()
+    fig1.add_tools(cross1)
+    fig2.add_tools(cross2)
+    args = {'cross': cross2, 'fig': fig1}
+    fig1.js_on_event('mousemove', CustomJS(args = args, code = js_move))
+    fig1.js_on_event('mouseleave', CustomJS(args = args, code = js_leave))
+    args = {'cross': cross1, 'fig': fig2}
+    fig2.js_on_event('mousemove', CustomJS(args = args, code = js_move))
+    fig2.js_on_event('mouseleave', CustomJS(args = args, code = js_leave))
