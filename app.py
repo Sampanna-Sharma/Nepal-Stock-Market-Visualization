@@ -23,6 +23,10 @@ def index():
 	script, div = components(plt)
 	return render_template("index.html", script=script, div=div)
 
+@app.route('/nepse')
+def nepse():
+    return "Hello world"
+
 @app.route('/data', methods = ['GET'])
 def data_serve():
     company_name = request.args.get('company')
