@@ -8,6 +8,7 @@ from bokeh.models.widgets import CheckboxButtonGroup, Select
 from bokeh.layouts import row, column
 from bokeh.themes import built_in_themes
 from bokeh.io import curdoc
+# from bokeh.themes import built_in_themes
 
 import pandas as pd
 import numpy as np
@@ -33,7 +34,7 @@ source = ColumnDataSource(company_data)
 
 
 def plot():
-    #curdoc().theme = 'dark_minimal'
+    # curdoc().theme = 'dark_minimal'
 
 
     candle = candle_plot()
@@ -333,3 +334,56 @@ def add_vlinked_crosshairs(fig1, fig2,fig3,fig4, fig5):
     args = {'cross': cross1, 'fig': fig5}
     fig5.js_on_event('mousemove', CustomJS(args = args, code = js_move))
     fig5.js_on_event('mouseleave', CustomJS(args = args, code = js_leave))
+
+
+
+
+
+
+def nepse_plot():
+    
+
+    data = pd.read_csv("nepse_data.csv")
+    data['time2'] = data['time'] 
+    source = ColumnDataSource(data)
+
+
+
+    p = figure(x_axis_type="datetime",title = "Nepse CandleStick",plot_width=1200, plot_height=500,
+          tools=TOOLS, active_scroll = 'wheel_zoom', toolbar_location = "above")
+
+    p.xaxis.formatter = DatetimeTickFormatter(
+                                days=["%F"],
+                                months=["%F"],
+                                years=["%F"],)
+    p.xaxis.axis_label = "date"
+    p.yaxis.axis_label = "price"
+
+    p.segment(x0='time2', y0='low', x1='time2', y1='high', line_width=1, color='black', source=source)
+    p.segment(x0='time2', y0='open', x1='time2', y1='close', line_width=6, color='black', source=source)
+    p.line(x='time2', y='close', alpha = 0.5, color = ORANGE, source = source)
+   
+    #p.x_range.start=source.data["time"][-50]
+    #p.x_range.end= source.data["time"][-1]
+    p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
+    p.y_range.bounds=(-50, 3000)
+    p.x_range.min_interval = timedelta(50)
+    p.y_range.min_interval = 100
+    #p.x_range.follow = 'end'
+    
+    hover = p.select(dict(type=HoverTool))
+    hover.tooltips = [
+        ("Date", "@time{%F}"),
+        ("Open", "@open"),
+        ("Close", "@close"),
+        ("High", "@high"),
+        ("Low", "@low"),
+        ]
+    hover.formatters={"@time":'datetime',}
+    hover.mode = "vline"
+   
+    #p.yaxis.ticker = SingleIntervalTicker(interval=100, num_minor_ticks=5)
+    p.yaxis[0].formatter = PrintfTickFormatter(format="Rs. %3.3f")
+    #p.yaxis[0].ticker.desired_num_ticks = 10
+
+    return p

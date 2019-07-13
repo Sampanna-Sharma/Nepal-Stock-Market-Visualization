@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import numpy as np
 from flask_cors import CORS
-from plot import plot
+from plot import plot, nepse_plot
 
 
 data = pd.read_csv("processed_data.csv")
@@ -25,7 +25,10 @@ def index():
 
 @app.route('/nepse')
 def nepse():
-    return "Hello world"
+    plt = nepse_plot()
+
+    script, div = components(plt)
+    return render_template("index.html", script=script, div=div)
 
 @app.route('/data', methods = ['GET'])
 def data_serve():
