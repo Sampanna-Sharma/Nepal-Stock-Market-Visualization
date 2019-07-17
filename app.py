@@ -2,14 +2,17 @@ from bokeh.models import ColumnDataSource
 from bokeh.embed import components
 from bokeh.resources import CDN
 from flask import Flask, render_template, request, jsonify
-
+import _pickle as pickle
 import pandas as pd
 import numpy as np
 from flask_cors import CORS
-from plot import plot, nepse_plot
 
 
 data = pd.read_csv("processed_data.csv")
+predict_data = pd.read_csv("data_set_ready_for_training.csv")
+predict_data = predict_data.replace([np.inf, -np.inf], np.nan).dropna()
+model = pickle.load(open('stock_predictor.obj','rb'))
+
 
 app = Flask(__name__)
 CORS(app)
@@ -18,27 +21,10 @@ CORS(app)
 
 @app.route('/')
 def index():
-	plt = plot()
-
-	script, div = components(plt)
-	return render_template("index.html", script=script, div=div)
-
-@app.route('/nepse')
-def nepse():
-    plt = nepse_plot()
-
+    from plot import plot
+    plt = plot()
     script, div = components(plt)
     return render_template("index.html", script=script, div=div)
-
-@app.route('/data', methods = ['GET'])
-def data_serve():
-    company_name = request.args.get('company')
-    print("here",company_name)
-    company_data = data.loc[data['traded_companies'] == company_name]
-    
-    response = company_data.drop(["traded_companies"],axis = 1).to_dict(orient='list')
- 
-    return jsonify(response)
 
 
 @app.route('/data/year', methods = ['GET'])
@@ -154,6 +140,22 @@ def data_serve_day():
     company_data['time2'] = company_data['time']
     
     response = company_data.drop(["traded_companies"],axis = 1).to_dict(orient='list')
+
+    if (company_name == "Nabil Bank Limited"):
+        input_data = predict_data[-1:].drop('news',axis = 1)
+        u, l = model.predict(input_data, 0)
+        response['open'].append(response['close'][-1])
+        response['low'].append(response['close'][-1])
+        response['close'].append(l[0])
+        response['high'].append(l[0])
+        response['color'].append('dodgerblue')
+        response['time2'].append(1508976000000)
+        del(response['open'][0])
+        del(response['low'][0])
+        del(response['close'][0])
+        del(response['high'][0])
+        del(response['color'][0])
+        del(response['time2'][0])
     return jsonify(response)
 
 

@@ -14,6 +14,9 @@ import pandas as pd
 import numpy as np
 from bokeh.palettes import Category20
 from bokeh.events import DoubleTap
+
+import requests
+import json
 #palletes
 RED = Category20[7][6]
 GREEN = Category20[5][4]
@@ -26,10 +29,10 @@ PURPLE = Category20[9][8]
 BROWN = Category20[11][10]
 time_frame = "/week"
 
-TOOLS = "pan,wheel_zoom,reset,hover"
-data = pd.read_csv("processed_data.csv")
-company_data = data.loc[data['traded_companies'] == 'Nabil Bank Limited']
-company_data['time2'] = company_data['time'] 
+TOOLS = "pan,xwheel_zoom,ywheel_zoom,reset,hover"
+url = "http://127.0.0.1:5000/data/day?company=Nabil%20Bank%20Limited"
+r = requests.get(url)
+company_data = json.loads(r.text)
 source = ColumnDataSource(company_data)
 
 
@@ -118,6 +121,32 @@ def plot():
     """)
      #Selection
     callback_select = CustomJS(args=dict(source=source,p=candle,company_select=Company_select, 
+                                timeframe_dropdown=timeframe_dropdown), 
+    code="""
+    timeframe_dropdown.value = "day"
+    var company_name = company_select.value
+    
+    var data = source.data;
+    let xhr  = new XMLHttpRequest();
+    var url = `http://localhost:5000/data/day?company=`+company_name.replace(/ /g,"%20")
+    xhr.open('GET',url);
+    xhr.send();
+    response = []
+    console.log(url)
+    xhr.onload = function(){
+        var response = xhr.response;
+        response = JSON.parse(response);
+        console.log(response)
+        
+    for (key in response) {
+        data[key] = response[key];
+        }
+    
+    source.change.emit()
+    p.reset.emit()}
+    """)
+
+    callback_dropdown = CustomJS(args=dict(source=source,p=candle,company_select=Company_select, 
                                 timeframe_dropdown=timeframe_dropdown, time_frame =time_frame), 
     code="""
     time_frame = "/" + timeframe_dropdown.value
@@ -162,7 +191,7 @@ def plot():
     #adding callbacks
     checkbox_button_group.js_on_click(callback_radio)
     Company_select.js_on_change('value', callback_select)
-    timeframe_dropdown.js_on_change('value', callback_select)
+    timeframe_dropdown.js_on_change('value', callback_dropdown)
 
     #Ontap callback
     candle.js_on_event(DoubleTap, callback_tap)
@@ -184,7 +213,7 @@ def bullinder_band():
 def candle_plot():
 
     p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1200, plot_height=500,
-          tools=TOOLS, active_scroll = 'wheel_zoom', toolbar_location = "above")
+          tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above")
 
     p.xaxis.formatter = DatetimeTickFormatter(
                                 days=["%F"],
