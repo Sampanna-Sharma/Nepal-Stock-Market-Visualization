@@ -236,13 +236,13 @@ def candle_plot():
     
     hover = p.select(dict(type=HoverTool))
     hover.tooltips = [
-        ("Date", "@time{%F}"),
+        ("Date", "@time2{%F}"),
         ("Open", "@open"),
         ("Close", "@close"),
         ("High", "@high"),
         ("Low", "@low"),
         ]
-    hover.formatters={"@time":'datetime',}
+    hover.formatters={"@time2":'datetime',}
     hover.mode = "vline"
    
     #p.yaxis.ticker = SingleIntervalTicker(interval=100, num_minor_ticks=5)
