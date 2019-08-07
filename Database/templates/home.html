@@ -1,0 +1,14 @@
+<html>
+  <body>
+    <table border="5px">
+    <td>Date</td> <td>Index</td>
+
+    {% for _,__,d,i in s%}
+    <tr>
+     <td> {{d}} </td>
+     <td> {{i}} </td>
+    </tr>
+    {%endfor%}
+    </table>
+  </body>
+</html>
