@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from bokeh.models import ColumnDataSource, CustomJS, HoverTool, DatetimeTickFormatter,\
                          Band,Panel, Tabs, SingleIntervalTicker, PrintfTickFormatter, Range1d, LinearAxis \
                         ,CrosshairTool, Span, TapTool, Dropdown
-from bokeh.models.widgets import CheckboxButtonGroup, Select
+from bokeh.models.widgets import CheckboxButtonGroup, Select, DataTable, TableColumn
 
 from bokeh.layouts import row, column
 from bokeh.themes import built_in_themes
@@ -19,7 +19,10 @@ import requests
 import json
 #palletes
 RED = Category20[7][6]
+RED_LIGHT = Category20[8][7]
+
 GREEN = Category20[5][4]
+GREEN_LIGHT = Category20[10][5]
 
 BLUE = Category20[3][0]
 BLUE_LIGHT = Category20[3][1]
@@ -35,10 +38,21 @@ r = requests.get(url)
 company_data = json.loads(r.text)
 source = ColumnDataSource(company_data)
 
+print('*******************************************')
+# news_data_to_list = open('news_new.txt', 'r')
+# news_data_to_list = list(news_data_to_list)
+# news_data_to_list = news_data_to_list[:50]
+# print(news_data_to_list)
+
+nabil_news = pd.read_csv('nabil.csv')
+nabil_news_list = list(nabil_news['news'])
+nabil_news_list = nabil_news_list[:17]
+print('*******************************************')
+
 
 def plot():
     # curdoc().theme = 'dark_minimal'
-
+    list_of_news = news_list()
 
     candle = candle_plot()
 
@@ -198,7 +212,7 @@ def plot():
     
     #final layout
     layout = column(row(Company_select,timeframe_dropdown),row(checkbox_button_group)
-                ,candle,tabs)
+                ,row(candle, list_of_news),tabs)
     
     
     return layout
@@ -210,9 +224,22 @@ def bullinder_band():
     
     return band
 
+
+def news_list():
+    # news_dict = {i:v for i,v in enumerate(news_data_to_list)}
+    news_dict = {'news' : nabil_news_list}
+    source = ColumnDataSource(news_dict)
+    columns = [
+        TableColumn(field="news", title="News")
+    ]
+
+    data_table = DataTable(source=source, columns=columns, width = 300, height=500)
+
+    return data_table
+
 def candle_plot():
 
-    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1200, plot_height=500,
+    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1000, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above")
 
     p.xaxis.formatter = DatetimeTickFormatter(
