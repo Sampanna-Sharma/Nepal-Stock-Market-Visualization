@@ -46,9 +46,19 @@ print('*******************************************')
 
 nabil_news = pd.read_csv('nabil.csv')
 nabil_news_list = list(nabil_news['news'])
-nabil_news_list = nabil_news_list[:17]
+nabil_news_list = nabil_news_list[:50]
 print('*******************************************')
 
+
+#######################
+axes_data = {
+    'x_min':date(2017, 9,24),
+    'x_max':date(2017, 11,15),
+    'y_min':min(source.data['open'][-2],source.data['close'][-2]) - 100, 
+    'y_max':max(source.data['open'][-2],source.data['close'][-2]) + 100
+}
+
+########################
 
 def plot():
     # curdoc().theme = 'dark_minimal'
@@ -135,12 +145,15 @@ def plot():
     """)
      #Selection
     callback_select = CustomJS(args=dict(source=source,p=candle,company_select=Company_select, 
-                                timeframe_dropdown=timeframe_dropdown), 
+                                timeframe_dropdown=timeframe_dropdown, axes_data = axes_data), 
     code="""
     timeframe_dropdown.value = "day"
     var company_name = company_select.value
     
     var data = source.data;
+
+    axesData = axes_data;
+
     let xhr  = new XMLHttpRequest();
     var url = `http://localhost:5000/data/day?company=`+company_name.replace(/ /g,"%20")
     xhr.open('GET',url);
@@ -156,6 +169,10 @@ def plot():
         data[key] = response[key];
         }
     
+    axesData['y_min'] = data['open'][(data['open']).length-2] - 100;
+    axesData['y_max'] = data['open'][(data['open']).length-2] + 100;
+
+    //axes_data.change.emit()
     source.change.emit()
     p.reset.emit()}
     """)
@@ -242,6 +259,19 @@ def candle_plot():
     p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1000, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above")
 
+    print('################################################')
+    # if source.data['color'][-1] == 'blue':
+    date_last = source.data['time2'][-1]
+    date_2ndlast = source.data['time2'][-2]
+    rect_width = date_last-date_2ndlast
+    rect_height = source.data['close'][-1]
+    # p.rect(x = date_2ndlast+rect_width/2, y = 0, width = rect_width, height = rect_height, alpha = 0.5, color = 'red')
+    # if p.y_range.bounds:
+    #     rect_height = p.y_range.bounds[1] - p.y_range.bounds[0]
+
+    print('################################################')
+
+
     p.xaxis.formatter = DatetimeTickFormatter(
                                 days=["%F"],
                                 months=["%F"],
@@ -251,16 +281,28 @@ def candle_plot():
 
     p.segment(x0='time2', y0='low', x1='time2', y1='high', line_width=1, color='black', source=source)
     p.segment(x0='time2', y0='open', x1='time2', y1='close', line_width=6, color='color', source=source)
+    p.rect(x = date_2ndlast+rect_width/2, y = source.data['close'][-2], width = rect_width, height = rect_height, alpha = 0.5, color = 'red')
+
     p.line(x='time2', y='close', alpha = 0.5, color = ORANGE, source = source)
    
     #p.x_range.start=source.data["time"][-50]
     #p.x_range.end= source.data["time"][-1]
-    p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
-    p.y_range.bounds=(-50, 3000)
+    p.y_range.start = axes_data['y_min']
+    p.y_range.end = axes_data['y_max']
+    p.x_range.start = axes_data['x_min']
+    p.x_range.end = axes_data['x_max']
+    # p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
+    # p.y_range.bounds=(-50, 3000)
     p.x_range.min_interval = timedelta(50)
     p.y_range.min_interval = 100
     #p.x_range.follow = 'end'
+
+    # if p.y_range.bounds:
+        # rect_height = p.y_range.bounds[1] - p.y_range.bounds[0]
     
+    # p.rect(x = date_2ndlast+rect_width/2, y = source.data['close'][-2], width = rect_width, height = rect_height, alpha = 0.5, color = 'red')
+
+
     hover = p.select(dict(type=HoverTool))
     hover.tooltips = [
         ("Date", "@time2{%F}"),
