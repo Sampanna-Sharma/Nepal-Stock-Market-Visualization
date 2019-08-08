@@ -148,10 +148,10 @@ def data_serve_day():
     response = company_data.drop(["traded_companies"],axis = 1).to_dict(orient='list')
     news = response['news']
 
-    response['news'] = (lambda x: [y for y in x if y != "0"] )(news)
+    #response['news'] = (lambda x: [y for y in x if y != "0"] )(news)
 
 
-    response['news'] = [val for sublist in response['news'] for val in eval(sublist)]
+    #response['news'] = [val for sublist in response['news'] for val in eval(sublist)]
 
 
     # if (company_name == "Nabil Bank Limited"):

@@ -145,14 +145,12 @@ def plot():
     """)
      #Selection
     callback_select = CustomJS(args=dict(source=source,p=candle, list_of_news = list_of_news,x_range=candle.x_range, y_range = candle.y_range,company_select=Company_select, 
-                                timeframe_dropdown=timeframe_dropdown, axes_data = axes_data), 
+                                timeframe_dropdown=timeframe_dropdown), 
     code="""
     timeframe_dropdown.value = "day"
     var company_name = company_select.value
     
     var data = source.data;
-
-    axesData = axes_data;
 
     let xhr  = new XMLHttpRequest();
     var url = `http://localhost:5000/data/day?company=`+company_name.replace(/ /g,"%20")
@@ -170,51 +168,64 @@ def plot():
         }
 
     
-    console.log('xrangeee -------', y_range)
-
-    var start = x_range.attributes.start
-    var end = x_range.attributes.end
-     
-    //start = data['time2'][data['time2'].length - 10] 
-    //end =  data['time2'][data['time2'].length - 1] 
-    y_range.setv({"start" :5,"end":10 })
-
-    console.log("x_range start",p.attributes.x_range.attributes.start)
-    console.log("x_range end",p.attributes.x_range.attributes.end)
-    //p.attributes.x_range._changing = true
-    //p.attributes.x_range.attributes.start = data['time2'][data['time2'].length - 10] 
-    //p.attributes.x_range.attributes.end = data['time2'][data['time2'].length - 1]
-    
-    //var startt = data['time2'][data['time2'].length - 10] - 1000
-    //var endd = data['time2'][data['time2'].length - 1]
-
-    //console.log('startt ', startt, 'endd', endd)
-
-    //p.attributes.x_range.attributes = {...p.attributes.x_range.attributes,  start:startt, end:endd}
-
-
-    console.log("x_range ",p.attributes.x_range.attributes)
-    console.log("x_range start",p.attributes.x_range.attributes.start)
-    console.log("x_range end",p.attributes.x_range.attributes.end)
-
-
-    //console.log("x_range end ",p.attributes.x_range.attributes.end)
-
-    //console.log("x_range end attr",p.attributes.x_range.attributes)
-    //console.log("x_range end ",p.attributes.x_range.attributes.end)
-    
-    axesData['y_min'] = data['open'][(data['open']).length-2] - 100;
-    axesData['y_max'] = data['open'][(data['open']).length-2] + 100;
-
-    //axes_data.change.emit()
     source.change.emit()
     p.reset.emit()
-    list_of_news.reset.emit()
+    list_of_news.change.emit()
+    
+    var start = data['close'][data['close'].length -1] 
+    var end = data['close'][data['close'].length -1] 
+
+    for(var i =data['close'].length -50;i<=data['close'].length-1;i++)
+    {
+        if (start>data['close'][i])
+        {
+            start = data['close'][i]
+        }
+        if (end<data['close'][i])
+        {
+            end = data['close'][i]
+        }
     }
+    
+    y_range.setv({"start": start-50, "end": end+50})
+
+    var xstart = data['time'][data['time'].length-50] 
+    var xstop = data['time'][data['time'].length-1]
+    x_range.setv({"start":xstart, "end":xstop})
+
+   
+    
+    if (timeframe_dropdown == '/month' || timeframe_dropdown == '/quater' || timeframe_dropdown == '/year'){
+        xstart = data['time'][0] 
+        xstop = data['time'][data['time'].length-1]
+        x_range.setv({"start":xstart, "end":xstop})
+
+        for(var i =0;i<=data['close'].length-1;i++)
+        {
+        if (start>data['close'][i])
+        {
+            start = data['close'][i]
+        }
+        if (end<data['close'][i])
+        {
+            end = data['close'][i]
+        }
+        }
+        y_range.setv({"start": start-300, "end": end+300})
+        }
+        
+    
+    console.log(p)
+
+    x_range.change.emit()
+    y_range.change.emit()
+    
+        }
     """)
 
     callback_dropdown = CustomJS(args=dict(source=source,p=candle,company_select=Company_select, 
-                                timeframe_dropdown=timeframe_dropdown, time_frame =time_frame), 
+                                timeframe_dropdown=timeframe_dropdown, time_frame =time_frame,
+                                x_range = candle.x_range, y_range = candle.y_range,ma_plt = MA_plot), 
     code="""
     time_frame = "/" + timeframe_dropdown.value
     var company_name = company_select.value
@@ -241,7 +252,57 @@ def plot():
         }
     
     source.change.emit()
-    p.reset.emit()}
+    p.reset.emit()
+    var start = data['close'][data['close'].length -1] 
+    var end = data['close'][data['close'].length -1] 
+
+    for(var i =data['close'].length -50;i<=data['close'].length-1;i++)
+    {
+        if (start>data['close'][i])
+        {
+            start = data['close'][i]
+        }
+        if (end<data['close'][i])
+        {
+            end = data['close'][i]
+        }
+    }
+    
+    y_range.setv({"start": start-50, "end": end+50})
+
+    var xstart = data['time'][data['time'].length-50] 
+    var xstop = data['time'][data['time'].length-1]
+    x_range.setv({"start":xstart, "end":xstop})
+
+   
+    
+    if (time_frame == '/month' || time_frame == '/quater' || time_frame == '/year'){
+        xstart = data['time'][0] 
+        xstop = data['time'][data['time'].length-1]
+        x_range.setv({"start":xstart, "end":xstop})
+
+        for(var i =0;i<=data['close'].length-1;i++)
+        {
+        if (start>data['close'][i])
+        {
+            start = data['close'][i]
+        }
+        if (end<data['close'][i])
+        {
+            end = data['close'][i]
+        }
+        }
+        y_range.setv({"start": start-300, "end": end+300})
+        }
+        
+    
+    console.log(p)
+
+    x_range.change.emit()
+    y_range.change.emit()
+    ma_plt.x_range.setv({"start": xstart, "end": xstop})
+    ma_plt.x_range.change.emit()
+        }
     """)
 
 
@@ -309,8 +370,8 @@ def news_list():
 
 def candle_plot():
 
-    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1000, plot_height=500,
-          tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above")
+    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1500, plot_height=500,
+          tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above",x_range = Range1d(date(2010,1,1),date(2020,1,1)))
 
     print('################################################')
     # if source.data['color'][-1] == 'blue':
@@ -342,9 +403,13 @@ def candle_plot():
 
 
     p.background_fill_color = "red"
-    p.background_fill_alpha = 0.3
+    p.background_fill_alpha = 0.1
 
    
+    p.x_range.start=source.data["time2"][-50]
+    p.x_range.end= source.data["time2"][-1]
+    p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
+    p.x_range.min_interval = timedelta(20)
     #p.x_range.start=source.data["time"][-50]
     #p.x_range.end= source.data["time"][-1]
     # p.y_range.start = axes_data['y_min']
@@ -353,8 +418,8 @@ def candle_plot():
     # p.x_range.end = axes_data['x_max']
     #p.x_range.bounds=(date(2009, 1, 1), date(2019, 12, 31))
     #p.y_range.bounds=(-50, 3000)
-    p.x_range.min_interval = timedelta(50)
-    p.y_range.min_interval = 100
+    #p.x_range.min_interval = timedelta(50)
+    #p.y_range.min_interval = 100
     #p.x_range.follow = 'end'
 
     # if p.y_range.bounds:
@@ -382,7 +447,7 @@ def candle_plot():
 
 def transaction_plot():
     #transaction graph
-    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1000, tools=TOOLS )
+    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1500, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p.xaxis.axis_label = "date"
     p.yaxis.axis_label = "No of Transactions"
 
@@ -398,7 +463,7 @@ def transaction_plot():
     return p
 
 def movingavg_plot():
-    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1000, tools=TOOLS )
+    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1500, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Avg_price"
     p2.line(x='time', y='ma50', color=RED, source=source, legend = "Moving Average :- 50")
@@ -416,7 +481,7 @@ def movingavg_plot():
     return p2
 
 def macd_plot():
-    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1000, tools=TOOLS )
+    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1500, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Moving Avg Difference"
     p2.line(x='time', y='macd920', color=RED, source=source, legend = "MACD 09-20")
@@ -430,7 +495,7 @@ def macd_plot():
     return p2
 
 def rsi_plot():
-    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1000, tools=TOOLS )
+    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1500, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "RSI point"
     p2.line(x='time', y='rsi14', color=RED, source=source, legend = "RSI-14")
