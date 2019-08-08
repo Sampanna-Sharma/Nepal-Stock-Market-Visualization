@@ -350,18 +350,18 @@ def news_list():
 
     data_table = DataTable(source=source, columns=columns, width = 300, height=500)
     
-    # callback_code = """
-    #     row = cb_obj.indices[0]
-    #     console.log('news: ', source.data['news'][row])
-    #     var news_link = source.data['links'][row]
-    #     window.open(news_link);
-    # """
+    callback_code = """
+        row = cb_obj.indices[0]
+        console.log('news: ', source.data['news'][row])
+        var news_link = source.data['urls'][row]
+        window.open(news_link);
+    """
 
 
-    # news_click_callback = CustomJS(args = dict(source=source), code = callback_code)
+    news_click_callback = CustomJS(args = dict(source=source), code = callback_code)
 
 
-    # source.selected.js_on_change('indices', news_click_callback)
+    source.selected.js_on_change('indices', news_click_callback)
 
     #taptool = data_table.select(type=TapTool)
     # taptool.callback = OpenURL(url = 'https://stackoverflow.com/questions/41511274/turn-bokeh-glyph-into-a-link')
@@ -370,7 +370,7 @@ def news_list():
 
 def candle_plot():
 
-    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1500, plot_height=500,
+    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1000, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above",x_range = Range1d(date(2010,1,1),date(2020,1,1)))
 
     print('################################################')
@@ -447,7 +447,7 @@ def candle_plot():
 
 def transaction_plot():
     #transaction graph
-    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1500, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
+    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1000, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p.xaxis.axis_label = "date"
     p.yaxis.axis_label = "No of Transactions"
 
@@ -463,7 +463,7 @@ def transaction_plot():
     return p
 
 def movingavg_plot():
-    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1500, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
+    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1000, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Avg_price"
     p2.line(x='time', y='ma50', color=RED, source=source, legend = "Moving Average :- 50")
@@ -481,7 +481,7 @@ def movingavg_plot():
     return p2
 
 def macd_plot():
-    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1500, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
+    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1000, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Moving Avg Difference"
     p2.line(x='time', y='macd920', color=RED, source=source, legend = "MACD 09-20")
@@ -495,7 +495,7 @@ def macd_plot():
     return p2
 
 def rsi_plot():
-    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1500, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
+    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1000, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "RSI point"
     p2.line(x='time', y='rsi14', color=RED, source=source, legend = "RSI-14")
