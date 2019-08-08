@@ -2,18 +2,13 @@ from bokeh.models import ColumnDataSource
 from bokeh.embed import components
 from bokeh.resources import CDN
 from flask import Flask, render_template, request, jsonify
-import _pickle as pickle
 import pandas as pd
 import numpy as np
 from flask_cors import CORS
 
 
 data = pd.read_csv("processed_data2.csv")
-print("columns",data.columns)
-predict_data = pd.read_csv("data_set_ready_for_training.csv")
-predict_data = predict_data.replace([np.inf, -np.inf], np.nan).dropna()
-model = pickle.load(open('stock_predictor.obj','rb'))
-
+data['time'] = data['time']*10**6
 
 app = Flask(__name__)
 CORS(app)
@@ -139,10 +134,10 @@ def data_serve_day():
     print("here",company_name)
     company_data = data.loc[data['traded_companies'] == company_name]
     company_data['time2'] = company_data['time']
-    company_data.news = company_data.news.fillna('0')
-    company_data.urls = company_data.urls.fillna('0')
+    company_data.news = company_data.news.fillna('')
+    company_data.urls = company_data.urls.fillna('')
 
-    print(company_data.news)
+    #print(company_data.news)
 
     # print('Company data: ', company_data.iloc[0])
     
@@ -152,8 +147,8 @@ def data_serve_day():
 
 
 
-    response['news'] = (lambda x: [y for y in x if y != "0"] )(news)
-    response['urls'] = (lambda x: [y for y in x if y != "0"] )(urls)
+    response['news'] = (lambda x: [y for y in x if y != ""] )(news)
+    response['urls'] = (lambda x: [y for y in x if y != ""] )(urls)
 
     response['news'] = [val for sublist in response['news'] for val in eval(sublist)]
     response['urls'] = [val for sublist in response['urls'] for val in eval(sublist)]

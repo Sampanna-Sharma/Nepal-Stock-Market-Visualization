@@ -36,29 +36,18 @@ TOOLS = "pan,xwheel_zoom,ywheel_zoom,reset,hover"
 url = "http://127.0.0.1:5000/data/day?company=Nabil%20Bank%20Limited"
 r = requests.get(url)
 company_data = json.loads(r.text)
-source = ColumnDataSource(company_data)
+news_source = ColumnDataSource({'news':company_data['news'],'urls':company_data['urls']})
+tech_source = ColumnDataSource({'time':company_data['time'],'rsi14':company_data['rsi14'],
+                                'ma9':company_data['ma9'],'ma20':company_data['ma20'],
+                                'ma50':company_data['ma50'],'macd920':company_data['macd920'],
+                                'bband_l':company_data['bband_l'],'bband_u':company_data['bband_u'],})
+del company_data['news']
+del company_data['urls']
+source = ColumnDataSource({'open':company_data['open'], 'low' : company_data['low'],
+                            'high':company_data['high'], 'close' : company_data['close'],
+                            'no_trans':company_data['no_trans'], 'time2' : company_data['time2'],
+                            'color': company_data['color']})
 
-print('*******************************************')
-# news_data_to_list = open('news_new.txt', 'r')
-# news_data_to_list = list(news_data_to_list)
-# news_data_to_list = news_data_to_list[:50]
-# print(news_data_to_list)
-
-nabil_news = pd.read_csv('nabil.csv')
-nabil_news_list = list(nabil_news['news'])
-nabil_news_list = nabil_news_list[:10]
-print('*******************************************')
-
-
-#######################
-axes_data = {
-    'x_min':date(2017, 9,24),
-    'x_max':date(2017, 11,15),
-    'y_min':min(source.data['open'][-2],source.data['close'][-2]) - 100, 
-    'y_max':max(source.data['open'][-2],source.data['close'][-2]) + 100
-}
-
-########################
 
 def plot():
     # curdoc().theme = 'dark_minimal'
@@ -103,7 +92,7 @@ def plot():
     add_vlinked_crosshairs(candle, transac_plot, MA_plot, rsi_plt, macd_plt)
 
     option = ["Nabil Bank Limited", "Arun Valley Hydropower Development Co. Ltd.",
-                "Citizen Bank International Limited", "Bank of Kathmandu Ltd.", "Nepal Bangladesh Bank Limited"]
+                "Citizen Bank International Limited", "Bank of Kathmandu Ltd."]
     menu = ["day","week", "month","quater", "year"]
     timeframe_dropdown = Select(title = 'Set Interval',value = 'day', options=menu)
 
@@ -145,7 +134,7 @@ def plot():
     """)
      #Selection
     callback_select = CustomJS(args=dict(source=source,p=candle, list_of_news = list_of_news,x_range=candle.x_range, y_range = candle.y_range,company_select=Company_select, 
-                                timeframe_dropdown=timeframe_dropdown), 
+                                timeframe_dropdown=timeframe_dropdown,news_source=news_source, tech_source = tech_source), 
     code="""
     timeframe_dropdown.value = "day"
     var company_name = company_select.value
@@ -163,12 +152,23 @@ def plot():
         response = JSON.parse(response);
         console.log(response)
         
-    for (key in response) {
+    for (key in data) {
         data[key] = response[key];
         }
-
+        news_source.data['news'] = response['news']
+        news_source.data['urls'] = response['urls']
+        tech_source.data['time'] = response['time']
+        tech_source.data['rsi14'] = response['rsi14']
+        tech_source.data['ma9'] = response['time']
+        tech_source.data['ma20'] = response['time']
+        tech_source.data['ma50'] = response['time']
+        tech_source.data['macd920'] = response['time']
+        tech_source.data['bband_l'] = response['time']
+        tech_source.data['bband_u'] = response['time']
     
     source.change.emit()
+    
+    news_source.change.emit()
     p.reset.emit()
     list_of_news.change.emit()
     
@@ -189,15 +189,15 @@ def plot():
     
     y_range.setv({"start": start-50, "end": end+50})
 
-    var xstart = data['time'][data['time'].length-50] 
-    var xstop = data['time'][data['time'].length-1]
+    var xstart = data['time2'][data['time2'].length-50] 
+    var xstop = data['time2'][data['time2'].length-1]
     x_range.setv({"start":xstart, "end":xstop})
 
    
     
     if (timeframe_dropdown == '/month' || timeframe_dropdown == '/quater' || timeframe_dropdown == '/year'){
-        xstart = data['time'][0] 
-        xstop = data['time'][data['time'].length-1]
+        xstart = data['time2'][0] 
+        xstop = data['time2'][data['time2'].length-1]
         x_range.setv({"start":xstart, "end":xstop})
 
         for(var i =0;i<=data['close'].length-1;i++)
@@ -247,11 +247,12 @@ def plot():
         response = JSON.parse(response);
         console.log(response)
         
-    for (key in response) {
+    for (key in data) {
         data[key] = response[key];
         }
     
     source.change.emit()
+    console.log("look here",source)
     p.reset.emit()
     var start = data['close'][data['close'].length -1] 
     var end = data['close'][data['close'].length -1] 
@@ -270,16 +271,17 @@ def plot():
     
     y_range.setv({"start": start-50, "end": end+50})
 
-    var xstart = data['time'][data['time'].length-50] 
-    var xstop = data['time'][data['time'].length-1]
+    var xstart = data['time2'][data['time2'].length-50] 
+    var xstop = data['time2'][data['time2'].length-1]
     x_range.setv({"start":xstart, "end":xstop})
 
    
     
     if (time_frame == '/month' || time_frame == '/quater' || time_frame == '/year'){
-        xstart = data['time'][0] 
-        xstop = data['time'][data['time'].length-1]
+        xstart = data['time2'][0] 
+        xstop = data['time2'][data['time2'].length-1]
         x_range.setv({"start":xstart, "end":xstop})
+         
 
         for(var i =0;i<=data['close'].length-1;i++)
         {
@@ -300,8 +302,6 @@ def plot():
 
     x_range.change.emit()
     y_range.change.emit()
-    ma_plt.x_range.setv({"start": xstart, "end": xstop})
-    ma_plt.x_range.change.emit()
         }
     """)
 
@@ -332,7 +332,7 @@ def plot():
     return layout
 
 def bullinder_band():
-    band = Band(base='time', lower='bband_l', upper='bband_u', source=source, level='underlay',
+    band = Band(base='time', lower='bband_l', upper='bband_u', source=tech_source, level='underlay',
                     fill_alpha=0.5, line_width=1, line_color='black', fill_color=BLUE_LIGHT)
     band.visible = False
     
@@ -340,17 +340,15 @@ def bullinder_band():
 
 
 def news_list():
-    # news_dict = {'news' : nabil_news_list,
-    #     'links' : ['http://www.reddit.com']*10
-    # }
-    # source = ColumnDataSource(news_dict)
+
     columns = [
-        TableColumn(field="news", title="News")
+        TableColumn(field="news", title="News"),
     ]
 
-    data_table = DataTable(source=source, columns=columns, width = 300, height=500)
+    data_table = DataTable(source=news_source, columns=columns, width = 400, height=500)
     
     callback_code = """
+        console.log('indi',cb_obj)
         row = cb_obj.indices[0]
         console.log('news: ', source.data['news'][row])
         var news_link = source.data['urls'][row]
@@ -358,10 +356,8 @@ def news_list():
     """
 
 
-    news_click_callback = CustomJS(args = dict(source=source), code = callback_code)
-
-
-    source.selected.js_on_change('indices', news_click_callback)
+    news_click_callback = CustomJS(args = dict(source=news_source), code = callback_code)
+    news_source.selected.js_on_change('indices', news_click_callback)
 
     #taptool = data_table.select(type=TapTool)
     # taptool.callback = OpenURL(url = 'https://stackoverflow.com/questions/41511274/turn-bokeh-glyph-into-a-link')
@@ -372,19 +368,6 @@ def candle_plot():
 
     p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1000, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above",x_range = Range1d(date(2010,1,1),date(2020,1,1)))
-
-    print('################################################')
-    # if source.data['color'][-1] == 'blue':
-    date_last = source.data['time2'][-1]
-    date_2ndlast = source.data['time2'][-2]
-    rect_width = date_last-date_2ndlast
-    rect_height = source.data['close'][-1]
-    # p.rect(x = date_2ndlast+rect_width/2, y = 0, width = rect_width, height = rect_height, alpha = 0.5, color = 'red')
-    # if p.y_range.bounds:
-    #     rect_height = p.y_range.bounds[1] - p.y_range.bounds[0]
-
-    print('################################################')
-
 
     p.xaxis.formatter = DatetimeTickFormatter(
                                 days=["%F"],
@@ -466,9 +449,9 @@ def movingavg_plot():
     p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1000, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Avg_price"
-    p2.line(x='time', y='ma50', color=RED, source=source, legend = "Moving Average :- 50")
-    p2.line(x='time', y='ma20', color=BLUE, source=source, legend = "Moving Average :- 20")
-    p2.line(x='time', y='ma9', color=GREEN, source=source, legend = "Moving Average :- 9")
+    p2.line(x='time', y='ma50', color=RED, source=tech_source, legend = "Moving Average :- 50")
+    p2.line(x='time', y='ma20', color=BLUE, source=tech_source, legend = "Moving Average :- 20")
+    p2.line(x='time', y='ma9', color=GREEN, source=tech_source, legend = "Moving Average :- 9")
     p2.toolbar.logo = None
     p2.toolbar_location = None
     hover = p2.select(dict(type=HoverTool))
@@ -484,7 +467,7 @@ def macd_plot():
     p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1000, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Moving Avg Difference"
-    p2.line(x='time', y='macd920', color=RED, source=source, legend = "MACD 09-20")
+    p2.line(x='time', y='macd920', color=RED, source=tech_source, legend = "MACD 09-20")
     p2.toolbar.logo = None
     p2.toolbar_location = None
     hover = p2.select(dict(type=HoverTool))
@@ -498,7 +481,7 @@ def rsi_plot():
     p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1000, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "RSI point"
-    p2.line(x='time', y='rsi14', color=RED, source=source, legend = "RSI-14")
+    p2.line(x='time', y='rsi14', color=RED, source=tech_source, legend = "RSI-14")
     p2.toolbar.logo = None
     p2.toolbar_location = None
     hover = p2.select(dict(type=HoverTool))
