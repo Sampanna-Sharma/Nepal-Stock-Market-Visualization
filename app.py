@@ -131,6 +131,8 @@ def data_serve_quater():
 @app.route('/data/day', methods = ['GET'])
 def data_serve_day():
     company_name = request.args.get('company')
+    predict_df = pd.read_csv('prediction.csv')
+    company_predict = predict_df.loc[predict_df['traded_companies'] == company_name]
     print("here",company_name)
     company_data = data.loc[data['traded_companies'] == company_name]
     company_data['time2'] = company_data['time']
@@ -152,6 +154,8 @@ def data_serve_day():
 
     response['news'] = [val for sublist in response['news'] for val in eval(sublist)]
     response['urls'] = [val for sublist in response['urls'] for val in eval(sublist)]
+
+    response['prediction'] = company_predict.prediction.to_list()
 
     # if (company_name == "Nabil Bank Limited"):
     #     input_data = predict_data[-1:].drop('news',axis = 1)

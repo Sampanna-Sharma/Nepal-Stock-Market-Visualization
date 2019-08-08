@@ -47,6 +47,7 @@ source = ColumnDataSource({'open':company_data['open'], 'low' : company_data['lo
                             'high':company_data['high'], 'close' : company_data['close'],
                             'no_trans':company_data['no_trans'], 'time2' : company_data['time2'],
                             'color': company_data['color']})
+predict_source = ColumnDataSource({'prediction' : company_data['prediction']})
 
 
 def plot():
@@ -101,7 +102,7 @@ def plot():
 
     #checkboxes
     checkbox_button_group = CheckboxButtonGroup(
-        labels=["Bullinder Band", "Support & Resistance"])
+        labels=["Bollinger Band", "Support & Resistance", "Prediction"])
     #Tap callback
     callback_tap = CustomJS(args=dict(button = checkbox_button_group,
                             supp=support,resis = resistance), code="""
@@ -122,7 +123,8 @@ def plot():
 
 
     #Radio_option
-    callback_radio = CustomJS(args=dict(p=bullinder,supp=support,resis = resistance), code="""
+    callback_radio = CustomJS(args=dict(p=bullinder,supp=support,resis = resistance,
+                                        candle = candle, predict_source = predict_source), code="""
         if (cb_obj.active.includes(0)){
             p.visible = true}
         else{ p.visible = false}
@@ -131,15 +133,27 @@ def plot():
             resis.visible = false
             supp.visible = false
         }
+
+        if (cb_obj.active.includes(2)){
+            color = 'white'
+            if (predict_source.data['prediction'][0] == 1)
+                {color = 'green'}
+            else{color = 'red'}
+            candle.background_fill_color = color
+            candle.background_fill_alpha = 0.1
+            }
+        else{ candle.background_fill_color = null}
     """)
      #Selection
     callback_select = CustomJS(args=dict(source=source,p=candle, list_of_news = list_of_news,x_range=candle.x_range, y_range = candle.y_range,company_select=Company_select, 
-                                timeframe_dropdown=timeframe_dropdown,news_source=news_source, tech_source = tech_source), 
+                                timeframe_dropdown=timeframe_dropdown,news_source=news_source, tech_source = tech_source,predict_source=predict_source), 
     code="""
     timeframe_dropdown.value = "day"
     var company_name = company_select.value
     
     var data = source.data;
+
+    p.background_fill_color = "white"
 
     let xhr  = new XMLHttpRequest();
     var url = `http://localhost:5000/data/day?company=`+company_name.replace(/ /g,"%20")
@@ -151,23 +165,25 @@ def plot():
         var response = xhr.response;
         response = JSON.parse(response);
         console.log(response)
-        
+    
+    
     for (key in data) {
         data[key] = response[key];
         }
+        predict_source.data['prediction'] = response['prediction']
         news_source.data['news'] = response['news']
         news_source.data['urls'] = response['urls']
         tech_source.data['time'] = response['time']
         tech_source.data['rsi14'] = response['rsi14']
-        tech_source.data['ma9'] = response['time']
-        tech_source.data['ma20'] = response['time']
-        tech_source.data['ma50'] = response['time']
-        tech_source.data['macd920'] = response['time']
-        tech_source.data['bband_l'] = response['time']
-        tech_source.data['bband_u'] = response['time']
+        tech_source.data['ma9'] = response['ma9']
+        tech_source.data['ma20'] = response['ma20']
+        tech_source.data['ma50'] = response['ma50']
+        tech_source.data['macd920'] = response['macd920']
+        tech_source.data['bband_l'] = response['bband_l']
+        tech_source.data['bband_u'] = response['bband_u']
     
     source.change.emit()
-    
+    tech_source.change.emit()
     news_source.change.emit()
     p.reset.emit()
     list_of_news.change.emit()
@@ -345,7 +361,7 @@ def news_list():
         TableColumn(field="news", title="News"),
     ]
 
-    data_table = DataTable(source=news_source, columns=columns, width = 400, height=500)
+    data_table = DataTable(source=news_source, columns=columns, width = 400, height=470)
     
     callback_code = """
         console.log('indi',cb_obj)
@@ -366,7 +382,7 @@ def news_list():
 
 def candle_plot():
 
-    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1000, plot_height=500,
+    p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1200, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above",x_range = Range1d(date(2010,1,1),date(2020,1,1)))
 
     p.xaxis.formatter = DatetimeTickFormatter(
@@ -385,8 +401,7 @@ def candle_plot():
     p.line(x='time2', y='close', alpha = 0.5, color = ORANGE, source = source)
 
 
-    p.background_fill_color = "red"
-    p.background_fill_alpha = 0.1
+    
 
    
     p.x_range.start=source.data["time2"][-50]
@@ -430,7 +445,7 @@ def candle_plot():
 
 def transaction_plot():
     #transaction graph
-    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1000, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
+    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1200, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p.xaxis.axis_label = "date"
     p.yaxis.axis_label = "No of Transactions"
 
@@ -446,7 +461,7 @@ def transaction_plot():
     return p
 
 def movingavg_plot():
-    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1000, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
+    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1200, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Avg_price"
     p2.line(x='time', y='ma50', color=RED, source=tech_source, legend = "Moving Average :- 50")
@@ -464,7 +479,7 @@ def movingavg_plot():
     return p2
 
 def macd_plot():
-    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1000, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
+    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1200, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Moving Avg Difference"
     p2.line(x='time', y='macd920', color=RED, source=tech_source, legend = "MACD 09-20")
@@ -478,7 +493,7 @@ def macd_plot():
     return p2
 
 def rsi_plot():
-    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1000, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
+    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1200, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "RSI point"
     p2.line(x='time', y='rsi14', color=RED, source=tech_source, legend = "RSI-14")
