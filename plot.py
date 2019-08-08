@@ -2,8 +2,8 @@ from bokeh.plotting import figure
 from datetime import date, timedelta
 from bokeh.models import ColumnDataSource, CustomJS, HoverTool, DatetimeTickFormatter,\
                          Band,Panel, Tabs, SingleIntervalTicker, PrintfTickFormatter, Range1d, LinearAxis \
-                        ,CrosshairTool, Span, TapTool, Dropdown
-from bokeh.models.widgets import CheckboxButtonGroup, Select, DataTable, TableColumn
+                        ,CrosshairTool, Span, TapTool, Dropdown, OpenURL
+from bokeh.models.widgets import CheckboxButtonGroup, Select, DataTable, TableColumn, Div
 
 from bokeh.layouts import row, column
 from bokeh.themes import built_in_themes
@@ -46,7 +46,7 @@ print('*******************************************')
 
 nabil_news = pd.read_csv('nabil.csv')
 nabil_news_list = list(nabil_news['news'])
-nabil_news_list = nabil_news_list[:50]
+nabil_news_list = nabil_news_list[:10]
 print('*******************************************')
 
 
@@ -144,7 +144,7 @@ def plot():
         }
     """)
      #Selection
-    callback_select = CustomJS(args=dict(source=source,p=candle,company_select=Company_select, 
+    callback_select = CustomJS(args=dict(source=source,p=candle, list_of_news = list_of_news,x_range=candle.x_range, y_range = candle.y_range,company_select=Company_select, 
                                 timeframe_dropdown=timeframe_dropdown, axes_data = axes_data), 
     code="""
     timeframe_dropdown.value = "day"
@@ -168,13 +168,49 @@ def plot():
     for (key in response) {
         data[key] = response[key];
         }
+
+    
+    console.log('xrangeee -------', y_range)
+
+    var start = x_range.attributes.start
+    var end = x_range.attributes.end
+     
+    //start = data['time2'][data['time2'].length - 10] 
+    //end =  data['time2'][data['time2'].length - 1] 
+    y_range.setv({"start" :5,"end":10 })
+
+    console.log("x_range start",p.attributes.x_range.attributes.start)
+    console.log("x_range end",p.attributes.x_range.attributes.end)
+    //p.attributes.x_range._changing = true
+    //p.attributes.x_range.attributes.start = data['time2'][data['time2'].length - 10] 
+    //p.attributes.x_range.attributes.end = data['time2'][data['time2'].length - 1]
+    
+    //var startt = data['time2'][data['time2'].length - 10] - 1000
+    //var endd = data['time2'][data['time2'].length - 1]
+
+    //console.log('startt ', startt, 'endd', endd)
+
+    //p.attributes.x_range.attributes = {...p.attributes.x_range.attributes,  start:startt, end:endd}
+
+
+    console.log("x_range ",p.attributes.x_range.attributes)
+    console.log("x_range start",p.attributes.x_range.attributes.start)
+    console.log("x_range end",p.attributes.x_range.attributes.end)
+
+
+    //console.log("x_range end ",p.attributes.x_range.attributes.end)
+
+    //console.log("x_range end attr",p.attributes.x_range.attributes)
+    //console.log("x_range end ",p.attributes.x_range.attributes.end)
     
     axesData['y_min'] = data['open'][(data['open']).length-2] - 100;
     axesData['y_max'] = data['open'][(data['open']).length-2] + 100;
 
     //axes_data.change.emit()
     source.change.emit()
-    p.reset.emit()}
+    p.reset.emit()
+    list_of_news.reset.emit()
+    }
     """)
 
     callback_dropdown = CustomJS(args=dict(source=source,p=candle,company_select=Company_select, 
@@ -229,7 +265,7 @@ def plot():
     
     #final layout
     layout = column(row(Company_select,timeframe_dropdown),row(checkbox_button_group)
-                ,row(candle, list_of_news),tabs)
+                ,row(column(candle,tabs), list_of_news) )
     
     
     return layout
@@ -243,16 +279,33 @@ def bullinder_band():
 
 
 def news_list():
-    # news_dict = {i:v for i,v in enumerate(news_data_to_list)}
-    news_dict = {'news' : nabil_news_list}
-    source = ColumnDataSource(news_dict)
+    # news_dict = {'news' : nabil_news_list,
+    #     'links' : ['http://www.reddit.com']*10
+    # }
+    # source = ColumnDataSource(news_dict)
     columns = [
         TableColumn(field="news", title="News")
     ]
 
     data_table = DataTable(source=source, columns=columns, width = 300, height=500)
+    
+    # callback_code = """
+    #     row = cb_obj.indices[0]
+    #     console.log('news: ', source.data['news'][row])
+    #     var news_link = source.data['links'][row]
+    #     window.open(news_link);
+    # """
 
+
+    # news_click_callback = CustomJS(args = dict(source=source), code = callback_code)
+
+
+    # source.selected.js_on_change('indices', news_click_callback)
+
+    #taptool = data_table.select(type=TapTool)
+    # taptool.callback = OpenURL(url = 'https://stackoverflow.com/questions/41511274/turn-bokeh-glyph-into-a-link')
     return data_table
+
 
 def candle_plot():
 
@@ -281,18 +334,25 @@ def candle_plot():
 
     p.segment(x0='time2', y0='low', x1='time2', y1='high', line_width=1, color='black', source=source)
     p.segment(x0='time2', y0='open', x1='time2', y1='close', line_width=6, color='color', source=source)
-    p.rect(x = date_2ndlast+rect_width/2, y = source.data['close'][-2], width = rect_width, height = rect_height, alpha = 0.5, color = 'red')
-
+    # p.rect(x = date_2ndlast+rect_width/2, y = source.data['close'][-2], width = rect_width, height = rect_height, alpha = 0.5, color = 'red')
+    # daylight_savings_start = Span(location=date_2ndlast+rect_width/2,
+                            #   dimension='height', line_color='green', line_width=12, line_alpha = 0.5)
+    # p.add_layout(daylight_savings_start)
     p.line(x='time2', y='close', alpha = 0.5, color = ORANGE, source = source)
+
+
+    p.background_fill_color = "red"
+    p.background_fill_alpha = 0.3
+
    
     #p.x_range.start=source.data["time"][-50]
     #p.x_range.end= source.data["time"][-1]
-    p.y_range.start = axes_data['y_min']
-    p.y_range.end = axes_data['y_max']
-    p.x_range.start = axes_data['x_min']
-    p.x_range.end = axes_data['x_max']
-    # p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
-    # p.y_range.bounds=(-50, 3000)
+    # p.y_range.start = axes_data['y_min']
+    # p.y_range.end = axes_data['y_max']
+    # p.x_range.start = axes_data['x_min']
+    # p.x_range.end = axes_data['x_max']
+    #p.x_range.bounds=(date(2009, 1, 1), date(2019, 12, 31))
+    #p.y_range.bounds=(-50, 3000)
     p.x_range.min_interval = timedelta(50)
     p.y_range.min_interval = 100
     #p.x_range.follow = 'end'
@@ -322,7 +382,7 @@ def candle_plot():
 
 def transaction_plot():
     #transaction graph
-    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1200, tools=TOOLS )
+    p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1000, tools=TOOLS )
     p.xaxis.axis_label = "date"
     p.yaxis.axis_label = "No of Transactions"
 
@@ -338,7 +398,7 @@ def transaction_plot():
     return p
 
 def movingavg_plot():
-    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1200, tools=TOOLS )
+    p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1000, tools=TOOLS )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Avg_price"
     p2.line(x='time', y='ma50', color=RED, source=source, legend = "Moving Average :- 50")
@@ -356,7 +416,7 @@ def movingavg_plot():
     return p2
 
 def macd_plot():
-    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1200, tools=TOOLS )
+    p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1000, tools=TOOLS )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Moving Avg Difference"
     p2.line(x='time', y='macd920', color=RED, source=source, legend = "MACD 09-20")
@@ -370,7 +430,7 @@ def macd_plot():
     return p2
 
 def rsi_plot():
-    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1200, tools=TOOLS )
+    p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1000, tools=TOOLS )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "RSI point"
     p2.line(x='time', y='rsi14', color=RED, source=source, legend = "RSI-14")

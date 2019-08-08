@@ -8,7 +8,8 @@ import numpy as np
 from flask_cors import CORS
 
 
-data = pd.read_csv("processed_data.csv")
+data = pd.read_csv("processed_data22.csv")
+print("columns",data.columns)
 predict_data = pd.read_csv("data_set_ready_for_training.csv")
 predict_data = predict_data.replace([np.inf, -np.inf], np.nan).dropna()
 model = pickle.load(open('stock_predictor.obj','rb'))
@@ -138,24 +139,36 @@ def data_serve_day():
     print("here",company_name)
     company_data = data.loc[data['traded_companies'] == company_name]
     company_data['time2'] = company_data['time']
+    company_data.news = company_data.news.fillna('0')
+    
+    print(company_data.news)
+
+    # print('Company data: ', company_data.iloc[0])
     
     response = company_data.drop(["traded_companies"],axis = 1).to_dict(orient='list')
+    news = response['news']
 
-    if (company_name == "Nabil Bank Limited"):
-        input_data = predict_data[-1:].drop('news',axis = 1)
-        u, l = model.predict(input_data, 0)
-        response['open'].append(response['close'][-1])
-        response['low'].append(response['close'][-1])
-        response['close'].append(l[0])
-        response['high'].append(l[0])
-        response['color'].append('dodgerblue')
-        response['time2'].append(1508976000000)
-        del(response['open'][0])
-        del(response['low'][0])
-        del(response['close'][0])
-        del(response['high'][0])
-        del(response['color'][0])
-        del(response['time2'][0])
+    response['news'] = (lambda x: [y for y in x if y != "0"] )(news)
+
+
+    response['news'] = [val for sublist in response['news'] for val in eval(sublist)]
+
+
+    # if (company_name == "Nabil Bank Limited"):
+    #     input_data = predict_data[-1:].drop('news',axis = 1)
+    #     u, l = model.predict(input_data, 0)
+    #     response['open'].append(response['close'][-1])
+    #     response['low'].append(response['close'][-1])
+    #     response['close'].append(l[0])
+    #     response['high'].append(l[0])
+    #     response['color'].append('dodgerblue')
+    #     response['time2'].append(1508976000000)
+    #     del(response['open'][0])
+    #     del(response['low'][0])
+    #     del(response['close'][0])
+    #     del(response['high'][0])
+    #     del(response['color'][0])
+    #     del(response['time2'][0])
     return jsonify(response)
 
 
