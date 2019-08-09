@@ -154,7 +154,8 @@ def data_serve_day():
 
     response['news'] = [val for sublist in response['news'] for val in eval(sublist)]
     response['urls'] = [val for sublist in response['urls'] for val in eval(sublist)]
-
+    response['news'] = np.array(response['news'])[::-1].tolist()
+    response['urls'] = np.array(response['urls'])[::-1].tolist()
     response['prediction'] = company_predict.prediction.to_list()
 
     # if (company_name == "Nabil Bank Limited"):
