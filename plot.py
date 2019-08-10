@@ -17,6 +17,7 @@ from bokeh.events import DoubleTap
 
 import requests
 import json
+import copy
 #palletes
 RED = Category20[7][6]
 RED_LIGHT = Category20[8][7]
@@ -33,47 +34,50 @@ BROWN = Category20[11][10]
 time_frame = "/week"
 
 TOOLS = "pan,xwheel_zoom,ywheel_zoom,reset,hover"
-url = "http://127.0.0.1:5000/data/day?company=Nabil%20Bank%20Limited"
+url = "http://0.0.0.0:80/data/day?company=Nabil%20Bank%20Limited"
 r = requests.get(url)
-company_data = json.loads(r.text)
-news_source = ColumnDataSource({'news':company_data['news'],'urls':company_data['urls']})
-tech_source = ColumnDataSource({'time':company_data['time'],'rsi14':company_data['rsi14'],
-                                'ma9':company_data['ma9'],'ma20':company_data['ma20'],
-                                'ma50':company_data['ma50'],'macd920':company_data['macd920'],
-                                'bband_l':company_data['bband_l'],'bband_u':company_data['bband_u'],})
-del company_data['news']
-del company_data['urls']
-source = ColumnDataSource({'open':company_data['open'], 'low' : company_data['low'],
-                            'high':company_data['high'], 'close' : company_data['close'],
-                            'no_trans':company_data['no_trans'], 'time2' : company_data['time2'],
-                            'color': company_data['color']})
-predict_source = ColumnDataSource({'prediction' : company_data['prediction']})
+nabil_data = json.loads(r.text)
 
 
 def plot():
-    # curdoc().theme = 'dark_minimal'
-    list_of_news = news_list()
+    # Column data
+    company_data = copy.deepcopy(nabil_data)
+    news_source = ColumnDataSource({'news':company_data['news'],'urls':company_data['urls']})
+    tech_source = ColumnDataSource({'time':company_data['time'],'rsi14':company_data['rsi14'],
+                                'ma9':company_data['ma9'],'ma20':company_data['ma20'],
+                                'ma50':company_data['ma50'],'macd920':company_data['macd920'],
+                                'bband_l':company_data['bband_l'],'bband_u':company_data['bband_u'],})
+    del company_data['news']
+    del company_data['urls']
+    source = ColumnDataSource({'open':company_data['open'], 'low' : company_data['low'],
+                            'high':company_data['high'], 'close' : company_data['close'],
+                            'no_trans':company_data['no_trans'], 'time2' : company_data['time2'],
+                            'color': company_data['color']})
+    predict_source = ColumnDataSource({'prediction' : company_data['prediction']})
 
-    candle = candle_plot()
+    # curdoc().theme = 'dark_minimal'
+    list_of_news = news_list(news_source)
+
+    candle = candle_plot(source)
 
     #bullinder band
-    bullinder = bullinder_band()
+    bullinder = bullinder_band(tech_source)
     candle.add_layout(bullinder)
 
     #transaction plot
-    transac_plot = transaction_plot()
+    transac_plot = transaction_plot(source)
     transac_plot.x_range = candle.x_range
 
     #moving average plot
-    MA_plot = movingavg_plot()
+    MA_plot = movingavg_plot(tech_source)
     MA_plot.x_range = candle.x_range
 
     #RSI plot
-    rsi_plt = rsi_plot()
+    rsi_plt = rsi_plot(tech_source)
     rsi_plt.x_range = candle.x_range
 
     #MACD plot
-    macd_plt = macd_plot()
+    macd_plt = macd_plot(tech_source)
     macd_plt.x_range = candle.x_range
 
     #Support line
@@ -156,7 +160,7 @@ def plot():
     p.background_fill_color = "white"
 
     let xhr  = new XMLHttpRequest();
-    var url = `http://localhost:5000/data/day?company=`+company_name.replace(/ /g,"%20")
+    var url = `http://0.0.0.0:80/data/day?company=`+company_name.replace(/ /g,"%20")
     xhr.open('GET',url);
     xhr.send();
     response = []
@@ -253,7 +257,7 @@ def plot():
     console.log('Company name: ' , company_name)
     var data = source.data;
     let xhr  = new XMLHttpRequest();
-    var url = `http://localhost:5000/data${time_frame}?company=`+company_name.replace(/ /g,"%20")
+    var url = `http://0.0.0.0:80/data${time_frame}?company=`+company_name.replace(/ /g,"%20")
     xhr.open('GET',url);
     xhr.send();
     response = []
@@ -347,7 +351,7 @@ def plot():
     
     return layout
 
-def bullinder_band():
+def bullinder_band(tech_source):
     band = Band(base='time', lower='bband_l', upper='bband_u', source=tech_source, level='underlay',
                     fill_alpha=0.5, line_width=1, line_color='black', fill_color=BLUE_LIGHT)
     band.visible = False
@@ -355,7 +359,7 @@ def bullinder_band():
     return band
 
 
-def news_list():
+def news_list(news_source):
 
     columns = [
         TableColumn(field="news", title="News"),
@@ -380,7 +384,7 @@ def news_list():
     return data_table
 
 
-def candle_plot():
+def candle_plot(source):
 
     p = figure(x_axis_type="datetime",title = "CandleStick",plot_width=1200, plot_height=500,
           tools=TOOLS, active_scroll = 'xwheel_zoom', toolbar_location = "above",x_range = Range1d(date(2010,1,1),date(2020,1,1)))
@@ -443,7 +447,7 @@ def candle_plot():
 
     return p
 
-def transaction_plot():
+def transaction_plot(source):
     #transaction graph
     p = figure(x_axis_type="datetime",title = "No of Transactions",plot_height=250,plot_width = 1200, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p.xaxis.axis_label = "date"
@@ -460,7 +464,7 @@ def transaction_plot():
     hover.mode = "vline"
     return p
 
-def movingavg_plot():
+def movingavg_plot(tech_source):
     p2 = figure(x_axis_type="datetime",title = "Moving Average",plot_height=250,plot_width = 1200, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Avg_price"
@@ -478,7 +482,7 @@ def movingavg_plot():
     hover.mode = "vline"
     return p2
 
-def macd_plot():
+def macd_plot(tech_source):
     p2 = figure(x_axis_type="datetime",title = "MACD plot",plot_height=250,plot_width = 1200, tools=TOOLS ,x_range = Range1d(date(2010,1,1),date(2020,1,1)))
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "Moving Avg Difference"
@@ -492,7 +496,7 @@ def macd_plot():
     hover.mode = "vline"
     return p2
 
-def rsi_plot():
+def rsi_plot(tech_source):
     p2 = figure(x_axis_type="datetime",title = "Relative Strength Index",plot_height=250,plot_width = 1200, tools=TOOLS,x_range = Range1d(date(2010,1,1),date(2020,1,1)) )
     p2.xaxis.axis_label = "date"
     p2.yaxis.axis_label = "RSI point"
@@ -561,50 +565,50 @@ def add_vlinked_crosshairs(fig1, fig2,fig3,fig4, fig5):
 
 
 
-def nepse_plot():
+# def nepse_plot():
     
 
-    data = pd.read_csv("nepse_data.csv")
-    data['time2'] = data['time'] 
-    source = ColumnDataSource(data)
+#     data = pd.read_csv("nepse_data.csv")
+#     data['time2'] = data['time'] 
+#     source = ColumnDataSource(data)
 
 
 
-    p = figure(x_axis_type="datetime",title = "Nepse CandleStick",plot_width=1200, plot_height=500,
-          tools=TOOLS, active_scroll = 'wheel_zoom', toolbar_location = "above")
+#     p = figure(x_axis_type="datetime",title = "Nepse CandleStick",plot_width=1200, plot_height=500,
+#           tools=TOOLS, active_scroll = 'wheel_zoom', toolbar_location = "above")
 
-    p.xaxis.formatter = DatetimeTickFormatter(
-                                days=["%F"],
-                                months=["%F"],
-                                years=["%F"],)
-    p.xaxis.axis_label = "date"
-    p.yaxis.axis_label = "price"
+#     p.xaxis.formatter = DatetimeTickFormatter(
+#                                 days=["%F"],
+#                                 months=["%F"],
+#                                 years=["%F"],)
+#     p.xaxis.axis_label = "date"
+#     p.yaxis.axis_label = "price"
 
-    p.segment(x0='time2', y0='low', x1='time2', y1='high', line_width=1, color='black', source=source)
-    p.segment(x0='time2', y0='open', x1='time2', y1='close', line_width=6, color='black', source=source)
-    p.line(x='time2', y='close', alpha = 0.5, color = ORANGE, source = source)
+#     p.segment(x0='time2', y0='low', x1='time2', y1='high', line_width=1, color='black', source=source)
+#     p.segment(x0='time2', y0='open', x1='time2', y1='close', line_width=6, color='black', source=source)
+#     p.line(x='time2', y='close', alpha = 0.5, color = ORANGE, source = source)
    
-    #p.x_range.start=source.data["time"][-50]
-    #p.x_range.end= source.data["time"][-1]
-    p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
-    p.y_range.bounds=(-50, 3000)
-    p.x_range.min_interval = timedelta(50)
-    p.y_range.min_interval = 100
-    #p.x_range.follow = 'end'
+#     #p.x_range.start=source.data["time"][-50]
+#     #p.x_range.end= source.data["time"][-1]
+#     p.x_range.bounds=(date(2010, 1, 1), date(2019, 12, 31))
+#     p.y_range.bounds=(-50, 3000)
+#     p.x_range.min_interval = timedelta(50)
+#     p.y_range.min_interval = 100
+#     #p.x_range.follow = 'end'
     
-    hover = p.select(dict(type=HoverTool))
-    hover.tooltips = [
-        ("Date", "@time{%F}"),
-        ("Open", "@open"),
-        ("Close", "@close"),
-        ("High", "@high"),
-        ("Low", "@low"),
-        ]
-    hover.formatters={"@time":'datetime',}
-    hover.mode = "vline"
+#     hover = p.select(dict(type=HoverTool))
+#     hover.tooltips = [
+#         ("Date", "@time{%F}"),
+#         ("Open", "@open"),
+#         ("Close", "@close"),
+#         ("High", "@high"),
+#         ("Low", "@low"),
+#         ]
+#     hover.formatters={"@time":'datetime',}
+#     hover.mode = "vline"
    
-    #p.yaxis.ticker = SingleIntervalTicker(interval=100, num_minor_ticks=5)
-    p.yaxis[0].formatter = PrintfTickFormatter(format="Rs. %3.3f")
-    #p.yaxis[0].ticker.desired_num_ticks = 10
+#     #p.yaxis.ticker = SingleIntervalTicker(interval=100, num_minor_ticks=5)
+#     p.yaxis[0].formatter = PrintfTickFormatter(format="Rs. %3.3f")
+#     #p.yaxis[0].ticker.desired_num_ticks = 10
 
-    return p
+#     return p
