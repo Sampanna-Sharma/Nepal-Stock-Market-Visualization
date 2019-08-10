@@ -4,6 +4,9 @@
 
 Visualizing and Predicting Nepal Stock Market
 
+## Hosted at
+http://ec2-54-84-135-237.compute-1.amazonaws.com/
+
 ## Getting Started
 
 Install requirement from requirement.txt and run the server.
